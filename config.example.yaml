@@ -491,6 +491,12 @@ checkpointer:
 #   connection_string: postgresql://user:password@localhost:5432/deerflow
 
 # ============================================================================
+# GitHub Configuration
+# ============================================================================
+# GitHub personal access token for higher API rate limits
+# github_token: $GITHUB_TOKEN
+
+# ============================================================================
 # IM Channels Configuration
 # ============================================================================
 # Connect DeerFlow to external messaging platforms.
