@@ -260,8 +260,7 @@ The default GitHub API rate limits are quite restrictive. For frequent project r
 
 **Configuration Steps**:
 1. Uncomment the `GITHUB_TOKEN` line in the `.env` file and add your personal access token
-2. Uncomment the `github_token` line in the `config.yaml` file (usually near the end of the file)
-3. Restart the DeerFlow service to apply changes
+2. Restart the DeerFlow service to apply changes
 
 ## Environment Variables
 

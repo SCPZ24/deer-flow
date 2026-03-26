@@ -58,16 +58,16 @@ class GitHubAPI:
         Initialize GitHub API client.
 
         Args:
-            token: Optional GitHub personal access token for higher rate limits
+            token:
+                Optional GitHub personal access token for higher rate limits.
+                User can set it in .env by uncommenting the line "GITHUB_TOKEN=your-github-token".
         """
-        # Prioritize using the passed-in token; if not available, attempt to read from environment variables.
-        self.token = token or os.getenv("GITHUB_TOKEN")
         self.headers = {
             "Accept": "application/vnd.github.v3+json",
             "User-Agent": "Deep-Research-Bot/1.0",
         }
-        if self.token:
-            self.headers["Authorization"] = f"token {self.token}"
+        if token:
+            self.headers["Authorization"] = f"token {token}"
 
     def _get(
         self, endpoint: str, params: Optional[Dict] = None, accept: Optional[str] = None
@@ -77,8 +77,6 @@ class GitHubAPI:
         headers = self.headers.copy()
         if accept:
             headers["Accept"] = accept
-
-
 
         resp = requests.get(url, headers=headers, params=params, timeout=30)
         resp.raise_for_status()
