@@ -60,7 +60,7 @@ class GitHubAPI:
         Args:
             token: Optional GitHub personal access token for higher rate limits
         """
-        # 优先使用传入的 token，如果没有则尝试从环境变量读取
+        # Prioritize using the passed-in token; if not available, attempt to read from environment variables.
         self.token = token or os.getenv("GITHUB_TOKEN")
         self.headers = {
             "Accept": "application/vnd.github.v3+json",
