@@ -1,7 +1,7 @@
 import logging
 import os
 from pathlib import Path
-from typing import Any, Self, Optional
+from typing import Any, Self
 
 import yaml
 from dotenv import load_dotenv
