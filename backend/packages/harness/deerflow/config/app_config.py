@@ -21,6 +21,7 @@ from deerflow.config.title_config import load_title_config_from_dict
 from deerflow.config.token_usage_config import TokenUsageConfig
 from deerflow.config.tool_config import ToolConfig, ToolGroupConfig
 from deerflow.config.tool_search_config import ToolSearchConfig, load_tool_search_config_from_dict
+from deerflow.config.image_model_config import ImageModelConfig, get_image_generate_fn
 
 load_dotenv()
 
@@ -41,6 +42,7 @@ class AppConfig(BaseModel):
     tool_search: ToolSearchConfig = Field(default_factory=ToolSearchConfig, description="Tool search / deferred loading configuration")
     model_config = ConfigDict(extra="allow", frozen=False)
     checkpointer: CheckpointerConfig | None = Field(default=None, description="Checkpointer configuration")
+    image_generate_model: ImageModelConfig | None = Field(default=None, description="Image generation models")
 
     @classmethod
     def resolve_config_path(cls, config_path: str | None = None) -> Path:
@@ -232,6 +234,14 @@ class AppConfig(BaseModel):
             The tool group config if found, otherwise None.
         """
         return next((group for group in self.tool_groups if group.name == name), None)
+
+    def get_image_generator(self) -> BaseImageGenerator | None:
+        """Get the image generator for the default model.
+
+        Returns:
+            The image generator if found, otherwise None.
+        """
+        return get_image_generate_fn(self.default_model, self.default_model)
 
 
 _app_config: AppConfig | None = None

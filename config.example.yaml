@@ -215,6 +215,17 @@ models:
   #   temperature: 0.7
 
 # ============================================================================
+# Image Generation Model
+# ============================================================================
+# Configure image generation providers (independent of chat models)
+image_generate_model:
+  # Example: Seedream Image generation
+  # - name: doubao-seedream-4-5
+  #   model: doubao-seedream-4-5-251128
+  #   api_base: https://ark.cn-beijing.volces.com/api/v3
+  #   api_key: $VOLCENGINE_API_KEY
+
+# ============================================================================
 # Tool Groups Configuration
 # ============================================================================
 # Define groups of tools for organization and access control

@@ -1,8 +1,12 @@
 import base64
-import os
-
-import requests
 from PIL import Image
+
+try:
+    from deerflow.config.app_config import get_app_config
+    from deerflow.config.image_model_config import get_image_generate_fn
+except ImportError:
+    from backend.packages.harness.deerflow.config.app_config import get_app_config
+    from backend.packages.harness.deerflow.config.image_model_config import get_image_generate_fn
 
 
 def validate_image(image_path: str) -> bool:
@@ -36,7 +40,6 @@ def generate_image(
     with open(prompt_file, "r", encoding="utf-8") as f:
         prompt = f.read()
     parts = []
-    i = 0
     
     # Filter out invalid reference images
     valid_reference_images = []
@@ -50,7 +53,6 @@ def generate_image(
         print(f"Note: {len(reference_images) - len(valid_reference_images)} reference image(s) were skipped due to validation failure.")
     
     for reference_image in valid_reference_images:
-        i += 1
         with open(reference_image, "rb") as f:
             image_b64 = base64.b64encode(f.read()).decode("utf-8")
         parts.append(
@@ -62,32 +64,21 @@ def generate_image(
             }
         )
 
-    api_key = os.getenv("GEMINI_API_KEY")
-    if not api_key:
-        return "GEMINI_API_KEY is not set"
-    response = requests.post(
-        "https://generativelanguage.googleapis.com/v1beta/models/gemini-3-pro-image-preview:generateContent",
-        headers={
-            "x-goog-api-key": api_key,
-            "Content-Type": "application/json",
-        },
-        json={
-            "generationConfig": {"imageConfig": {"aspectRatio": aspect_ratio}},
-            "contents": [{"parts": [*parts, {"text": prompt}]}],
-        },
+    app_cfg = get_app_config()
+    model_cfg = app_cfg.image_generate_model
+    if model_cfg is None:
+        raise ValueError("image_generate_model is not configured")
+    generate_fn = get_image_generate_fn(model_cfg)
+    if generate_fn is None:
+        raise ValueError(f"Unsupported image model: {model_cfg.name}")
+    image_bytes = generate_fn(
+        prompt=prompt,
+        reference_images=parts,
+        aspect_ratio=aspect_ratio,
     )
-    response.raise_for_status()
-    json = response.json()
-    parts: list[dict] = json["candidates"][0]["content"]["parts"]
-    image_parts = [part for part in parts if part.get("inlineData", False)]
-    if len(image_parts) == 1:
-        base64_image = image_parts[0]["inlineData"]["data"]
-        # Save the image to a file
-        with open(output_file, "wb") as f:
-            f.write(base64.b64decode(base64_image))
-        return f"Successfully generated image to {output_file}"
-    else:
-        raise Exception("Failed to generate image")
+    with open(output_file, "wb") as f:
+        f.write(image_bytes)
+    return f"Successfully generated image to {output_file}"
 
 
 if __name__ == "__main__":
