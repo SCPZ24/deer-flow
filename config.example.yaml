@@ -220,9 +220,9 @@ models:
 # Configure image generation providers (independent of chat models)
 image_generate_model:
   # Example: Seedream Image generation
-  # - name: doubao-seedream-4-5
-  #   model: doubao-seedream-4-5-251128
-  #   api_base: https://ark.cn-beijing.volces.com/api/v3
+  # - name: doubao-seedream
+  #   model: doubao-seedream-5-0-260128
+  #   api_base: https://ark.cn-beijing.volces.com/api/v3/chat/completions
   #   api_key: $VOLCENGINE_API_KEY
 
 # ============================================================================

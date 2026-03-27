@@ -4,7 +4,6 @@ import os
 import requests
 from abc import ABC, abstractmethod
 
-
 class ImageModelConfig(BaseModel):
     """
     Config for image generation models.
@@ -78,35 +77,51 @@ class VolcengineSeedreamImageGenerator(BaseImageGenerator):
             raise ValueError("api_base required")
         if not self.cfg.api_key:
             raise ValueError("api_key required")
-        images_b64 = []
-        for part in reference_images or []:
-            if isinstance(part, dict):
-                inline = part.get("inlineData") or {}
-                data = inline.get("data")
-                if data:
-                    images_b64.append(data)
-        url = f"{self.cfg.api_base.rstrip('/')}/images/generations"
+
+        url = f"{self.cfg.api_base.rstrip('/')}"
         headers = {"Authorization": f"Bearer {self.cfg.api_key}", "Content-Type": "application/json"}
+    
+        size_map = {"1:1": "1920x1920", "16:9": "2560x1440", "2:3": "1600x2400"}
+        size = size_map.get(aspect_ratio, "2560x1440")
+        
         payload = {
             "model": self.cfg.model,
             "prompt": prompt,
-            "aspect_ratio": aspect_ratio,
-            "images": images_b64,
+            "sequential_image_generation": "disabled",
+            "response_format": "b64_json",
+            "size": size,
+            "stream": False,
+            "watermark": False
         }
-        resp = requests.post(url, headers=headers, json=payload, timeout=60)
-        resp.raise_for_status()
-        data = resp.json()
-        image_b64 = None
-        if isinstance(data, dict):
-            image_b64 = (
-                data.get("data", [{}])[0].get("b64_json")
-                or data.get("image_base64")
-                or data.get("image", {}).get("base64")
-            )
-        if not image_b64:
-            raise RuntimeError("No image in response")
-        return base64.b64decode(image_b64)
 
+        resp = requests.post(url, headers=headers, json=payload, timeout=120)
+        try:
+            resp.raise_for_status()
+        except Exception as e:
+            # 输出详细错误信息帮助调试
+            error_msg = f"Request failed: {e}\nURL: {url}\nStatus: {resp.status_code}\nResponse: {resp.text}"
+            raise RuntimeError(error_msg)
+        data = resp.json()
+
+        # 响应格式: {"created": 1234567890, "data": [{"b64_json": "base64..."}]} 
+        # 成功curl返回url格式，我们这里用b64_json更方便
+        images = data.get("data") or []
+        if not images:
+            raise RuntimeError("No image in response")
+        
+        # 尝试获取b64_json
+        b64img = images[0].get("b64_json")
+        if b64img:
+            return base64.b64decode(b64img)
+        
+        # 如果是url格式，下载图片
+        img_url = images[0].get("url")
+        if img_url:
+            img_resp = requests.get(img_url, timeout=30)
+            img_resp.raise_for_status()
+            return img_resp.content
+        
+        raise RuntimeError(f"No image data found in response: {data}")
 
 class OpenAICompatibleImageGenerator(BaseImageGenerator):
     def __init__(self, cfg: ImageModelConfig):
@@ -124,7 +139,7 @@ class OpenAICompatibleImageGenerator(BaseImageGenerator):
         api_key = self.cfg.api_key or os.getenv("OPENAI_API_KEY") or ""
         if not api_key:
             raise ValueError("api_key required")
-        url = f"{self.cfg.api_base.rstrip('/')}/images/generations"
+        url = f"{self.cfg.api_base.rstrip('/')}"
         headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
         payload = {
             "model": self.cfg.model or "gpt-image-1",
