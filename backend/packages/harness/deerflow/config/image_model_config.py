@@ -1,6 +1,5 @@
 from pydantic import BaseModel, Field
 import base64
-import os
 import requests
 from abc import ABC, abstractmethod
 
@@ -38,28 +37,43 @@ class GeminiImageGenerator(BaseImageGenerator):
         reference_images: list[dict],
         aspect_ratio: str = "16:9",
     ) -> bytes:
-        api_key = self.cfg.api_key or os.getenv("GEMINI_API_KEY") or ""
+        api_key = self.cfg.api_key
         if not api_key:
-            raise ValueError("Missing GEMINI_API_KEY")
-        model = self.cfg.model or "gemini-3-pro-image-preview"
+            raise ValueError("api_key required")
+
+        model = self.cfg.model or "gemini-3-flash-image" 
         url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
-        headers = {"x-goog-api-key": api_key, "Content-Type": "application/json"}
+    
+        headers = {"Content-Type": "application/json"}
+        params = {"key": api_key}
+
         payload = {
-            "generationConfig": {"imageConfig": {"aspectRatio": aspect_ratio}},
-            "contents": [{"parts": [*(reference_images or []), {"text": prompt}]}],
+            "contents": [{
+                "parts": reference_images + [{"text": prompt}]
+            }],
+            "generationConfig": {
+                "imageConfig": {
+                    "aspectRatio": aspect_ratio,
+                    "outputMimeType": "image/jpeg"
+                }
+         }
         }
-        resp = requests.post(url, headers=headers, json=payload, timeout=60)
+
+        resp = requests.post(url, headers=headers, params=params, json=payload, timeout=90)
         resp.raise_for_status()
+    
         data = resp.json()
-        cand = data.get("candidates") or []
-        if not cand:
-            raise RuntimeError("No candidates")
-        parts_out = cand[0].get("content", {}).get("parts") or []
-        imgs = [p for p in parts_out if isinstance(p, dict) and p.get("inlineData")]
-        if not imgs:
-            raise RuntimeError("No image in response")
-        b64img = imgs[0]["inlineData"]["data"]
-        return base64.b64decode(b64img)
+    
+        candidate = data.get("candidates", [{}])[0]
+        content_parts = candidate.get("content", {}).get("parts", [])
+    
+        for part in content_parts:
+            if "inlineData" in part:
+                return base64.b64decode(part["inlineData"]["data"])
+            
+        # If no inlineData found, raise error
+        reason = candidate.get("finishReason", "UNKNOWN")
+        raise RuntimeError(f"No image generated. Finish Reason: {reason}")
 
 
 class VolcengineSeedreamImageGenerator(BaseImageGenerator):
@@ -98,23 +112,18 @@ class VolcengineSeedreamImageGenerator(BaseImageGenerator):
         try:
             resp.raise_for_status()
         except Exception as e:
-            # 输出详细错误信息帮助调试
             error_msg = f"Request failed: {e}\nURL: {url}\nStatus: {resp.status_code}\nResponse: {resp.text}"
             raise RuntimeError(error_msg)
         data = resp.json()
 
-        # 响应格式: {"created": 1234567890, "data": [{"b64_json": "base64..."}]} 
-        # 成功curl返回url格式，我们这里用b64_json更方便
         images = data.get("data") or []
         if not images:
             raise RuntimeError("No image in response")
         
-        # 尝试获取b64_json
         b64img = images[0].get("b64_json")
         if b64img:
             return base64.b64decode(b64img)
         
-        # 如果是url格式，下载图片
         img_url = images[0].get("url")
         if img_url:
             img_resp = requests.get(img_url, timeout=30)
@@ -123,47 +132,10 @@ class VolcengineSeedreamImageGenerator(BaseImageGenerator):
         
         raise RuntimeError(f"No image data found in response: {data}")
 
-class OpenAICompatibleImageGenerator(BaseImageGenerator):
-    def __init__(self, cfg: ImageModelConfig):
-        super().__init__(cfg)
-        self.cfg = cfg
-
-    def _generate(
-        self,
-        prompt: str,
-        reference_images: list[dict],
-        aspect_ratio: str = "16:9",
-    ) -> bytes:
-        if not self.cfg.api_base:
-            raise ValueError("api_base required")
-        api_key = self.cfg.api_key or os.getenv("OPENAI_API_KEY") or ""
-        if not api_key:
-            raise ValueError("api_key required")
-        url = f"{self.cfg.api_base.rstrip('/')}"
-        headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
-        payload = {
-            "model": self.cfg.model or "gpt-image-1",
-            "prompt": prompt,
-            "size": "1024x576" if aspect_ratio == "16:9" else "1024x1024",
-        }
-        resp = requests.post(url, headers=headers, json=payload, timeout=60)
-        resp.raise_for_status()
-        data = resp.json()
-        images = data.get("data") or []
-        if not images:
-            raise RuntimeError("No image in response")
-        b64img = images[0].get("b64_json")
-        if not b64img:
-            raise RuntimeError("No base64 data")
-        return base64.b64decode(b64img)
-
-
 def get_image_generate_fn(cfg: ImageModelConfig):
     name = cfg.name.lower()
     if "gemini" in name:
         return GeminiImageGenerator(cfg)._generate
     if "seedream" in name:
         return VolcengineSeedreamImageGenerator(cfg)._generate
-    if "openai" in name:
-        return OpenAICompatibleImageGenerator(cfg)._generate
     return None

@@ -225,6 +225,12 @@ image_generate_model:
   #   api_base: https://ark.cn-beijing.volces.com/api/v3/chat/completions
   #   api_key: $VOLCENGINE_API_KEY
 
+  # Example: Google Gemini Image Generation
+  # - name: gemini-image-gen
+  #   model: gemini-3-flash-image
+  #   api_base: https://generativelanguage.googleapis.com/v1beta
+  #   api_key: $GEMINI_API_KEY
+
 # ============================================================================
 # Tool Groups Configuration
 # ============================================================================
