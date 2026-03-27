@@ -1,7 +1,9 @@
-from pydantic import BaseModel, Field
 import base64
-import requests
 from abc import ABC, abstractmethod
+
+import requests
+from pydantic import BaseModel, Field
+
 
 class ImageModelConfig(BaseModel):
     """

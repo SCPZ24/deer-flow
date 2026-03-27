@@ -12,6 +12,7 @@ from deerflow.config.acp_config import load_acp_config_from_dict
 from deerflow.config.checkpointer_config import CheckpointerConfig, load_checkpointer_config_from_dict
 from deerflow.config.extensions_config import ExtensionsConfig
 from deerflow.config.guardrails_config import load_guardrails_config_from_dict
+from deerflow.config.image_model_config import ImageModelConfig, get_image_generate_fn
 from deerflow.config.memory_config import load_memory_config_from_dict
 from deerflow.config.model_config import ModelConfig
 from deerflow.config.sandbox_config import SandboxConfig
@@ -22,7 +23,6 @@ from deerflow.config.title_config import load_title_config_from_dict
 from deerflow.config.token_usage_config import TokenUsageConfig
 from deerflow.config.tool_config import ToolConfig, ToolGroupConfig
 from deerflow.config.tool_search_config import ToolSearchConfig, load_tool_search_config_from_dict
-from deerflow.config.image_model_config import ImageModelConfig, get_image_generate_fn
 
 load_dotenv()
 
