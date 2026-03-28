@@ -217,7 +217,8 @@ models:
 # ============================================================================
 # Image Generation Model
 # ============================================================================
-# Configure image generation providers (independent of chat models)
+# Configure your image generation model here.
+# Note that we only support a single model yet.
 image_generate_model:
   # Example: Seedream Image generation
   # - name: doubao-seedream
