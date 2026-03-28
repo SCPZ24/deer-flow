@@ -135,9 +135,11 @@ class VolcengineSeedreamImageGenerator(BaseImageGenerator):
         raise RuntimeError(f"No image data found in response: {data}")
 
 def get_image_generate_fn(cfg: ImageModelConfig):
+    if not cfg.name:
+        raise ValueError("Image model name missing, check your config")
     name = cfg.name.lower()
     if "gemini" in name:
         return GeminiImageGenerator(cfg)._generate
     if "seedream" in name:
         return VolcengineSeedreamImageGenerator(cfg)._generate
-    return None
+    raise ValueError(f"Unknown image model: {name}")
