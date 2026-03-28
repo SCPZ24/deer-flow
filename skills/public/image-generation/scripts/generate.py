@@ -3,10 +3,8 @@ from PIL import Image
 
 try:
     from deerflow.config.app_config import get_app_config
-    from deerflow.config.image_model_config import get_image_generate_fn
 except ImportError:
     from backend.packages.harness.deerflow.config.app_config import get_app_config
-    from backend.packages.harness.deerflow.config.image_model_config import get_image_generate_fn
 
 
 def validate_image(image_path: str) -> bool:
@@ -65,12 +63,9 @@ def generate_image(
         )
 
     app_cfg = get_app_config()
-    model_cfg = app_cfg.image_generate_model
-    if model_cfg is None:
-        raise ValueError("image_generate_model is not configured")
-    generate_fn = get_image_generate_fn(model_cfg)
+    generate_fn = app_cfg.get_image_generator()
     if generate_fn is None:
-        raise ValueError(f"Unsupported image model: {model_cfg.name}")
+        raise ValueError("image_generate_model is not configured")
     image_bytes = generate_fn(
         prompt=prompt,
         reference_images=parts,

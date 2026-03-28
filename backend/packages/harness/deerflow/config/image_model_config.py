@@ -43,8 +43,9 @@ class GeminiImageGenerator(BaseImageGenerator):
         if not api_key:
             raise ValueError("api_key required")
 
-        model = self.cfg.model or "gemini-3-flash-image" 
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent"
+        model = self.cfg.model or "gemini-3-flash-image"
+        base_url = (self.cfg.api_base or "https://generativelanguage.googleapis.com/v1beta").rstrip("/")
+        url = f"{base_url}/models/{model}:generateContent"
     
         headers = {"Content-Type": "application/json"}
         params = {"key": api_key}
@@ -115,7 +116,7 @@ class VolcengineSeedreamImageGenerator(BaseImageGenerator):
             resp.raise_for_status()
         except Exception as e:
             error_msg = f"Request failed: {e}\nURL: {url}\nStatus: {resp.status_code}\nResponse: {resp.text}"
-            raise RuntimeError(error_msg)
+            raise RuntimeError(error_msg) from e
         data = resp.json()
 
         images = data.get("data") or []
@@ -135,11 +136,12 @@ class VolcengineSeedreamImageGenerator(BaseImageGenerator):
         raise RuntimeError(f"No image data found in response: {data}")
 
 def get_image_generate_fn(cfg: ImageModelConfig):
-    if not cfg.name:
-        raise ValueError("Image model name missing, check your config")
-    name = cfg.name.lower()
+    raw_name = (cfg.name or "").strip()
+    if not raw_name:
+        raise ValueError("Image model config 'name' is required for provider selection")
+    name = raw_name.lower()
     if "gemini" in name:
         return GeminiImageGenerator(cfg)._generate
     if "seedream" in name:
         return VolcengineSeedreamImageGenerator(cfg)._generate
-    raise ValueError(f"Unknown image model: {name}")
+    raise ValueError(f"Unsupported image provider in config name: {cfg.name!r}")

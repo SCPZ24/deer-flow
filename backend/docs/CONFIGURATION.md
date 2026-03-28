@@ -168,14 +168,17 @@ For Gemini accessed **without** thinking (e.g. via OpenRouter where thinking is 
 
 ### Image Generation Model
 
-You can configure an image generation model now.
-Supported models:
-- Seedream Image generation
-- Google Gemini Image Generation
+You can configure an image generation model in `config.yaml`.
+Supported providers:
+- Seedream image generation
+- Google Gemini image generation
+
 Configuration steps:
-1. Go to `config.yaml` and find "Image Generation Model" section.
-2. Uncomment, and fill in the model you want to use.(`name` and `api_base` is already set, modify it if you need it.)
-3. Save and reload.
+1. Open `config.yaml` and find the `image_generate_model` section.
+2. Uncomment the section and fill in the model you want to use. The sample values for `name` and `api_base` are prefilled and can be changed if needed.
+3. Save the file and reload the service.
+
+Note: `image_generate_model` can only be configured with a single model yet.
 
 ```yaml
 image_generate_model:

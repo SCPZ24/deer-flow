@@ -49,7 +49,11 @@ class AppConfig(BaseModel):
     @classmethod
     def normalize_image_generate_model(cls, value: Any) -> Any:
         if isinstance(value, list):
-            return value[0] if value else None
+            if not value:
+                return None
+            if len(value) > 1:
+                raise ValueError("Only one image model is supported yet...")
+            return value[0]
         return value
 
     @classmethod
