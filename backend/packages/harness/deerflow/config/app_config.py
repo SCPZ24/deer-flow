@@ -17,6 +17,7 @@ from deerflow.config.memory_config import load_memory_config_from_dict
 from deerflow.config.model_config import ModelConfig
 from deerflow.config.sandbox_config import SandboxConfig
 from deerflow.config.skills_config import SkillsConfig
+from deerflow.config.stream_bridge_config import StreamBridgeConfig, load_stream_bridge_config_from_dict
 from deerflow.config.subagents_config import load_subagents_config_from_dict
 from deerflow.config.summarization_config import load_summarization_config_from_dict
 from deerflow.config.title_config import load_title_config_from_dict
@@ -43,6 +44,7 @@ class AppConfig(BaseModel):
     tool_search: ToolSearchConfig = Field(default_factory=ToolSearchConfig, description="Tool search / deferred loading configuration")
     model_config = ConfigDict(extra="allow", frozen=False)
     checkpointer: CheckpointerConfig | None = Field(default=None, description="Checkpointer configuration")
+    stream_bridge: StreamBridgeConfig | None = Field(default=None, description="Stream bridge configuration")
     image_generate_model: ImageModelConfig | None = Field(default=None, description="Image generation models")
 
     @field_validator("image_generate_model", mode="before")
@@ -133,6 +135,10 @@ class AppConfig(BaseModel):
         # Load checkpointer config if present
         if "checkpointer" in config_data:
             load_checkpointer_config_from_dict(config_data["checkpointer"])
+
+        # Load stream bridge config if present
+        if "stream_bridge" in config_data:
+            load_stream_bridge_config_from_dict(config_data["stream_bridge"])
 
         # Always refresh ACP agent config so removed entries do not linger across reloads.
         load_acp_config_from_dict(config_data.get("acp_agents", {}))
