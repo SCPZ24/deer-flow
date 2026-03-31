@@ -184,7 +184,7 @@ Note: `image_generate_model` can only be configured with a single model yet.
 image_generate_model:
   - name: doubao-seedream
     model: doubao-seedream-5-0-260128
-    api_base: https://ark.cn-beijing.volces.com/api/v3/chat/completions
+    api_base: https://ark.cn-beijing.volces.com/api/v3/images/generations
     api_key: $VOLCENGINE_API_KEY
 ```
 
