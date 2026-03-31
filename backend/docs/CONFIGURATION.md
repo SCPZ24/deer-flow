@@ -176,7 +176,8 @@ Supported providers:
 Configuration steps:
 1. Open `config.yaml` and find the `image_generate_model` section.
 2. Uncomment the section and fill in the model you want to use. The sample values for `name` and `api_base` are prefilled and can be changed if needed.
-3. Save the file and reload the service.
+3. Find the `Sandbox Configuration` section, and tune the `allow_host_bash` to true as the agent needs bash to run the python image generation script.
+4. Save the file and reload the service.
 
 Note: `image_generate_model` can only be configured with a single model yet.
 
