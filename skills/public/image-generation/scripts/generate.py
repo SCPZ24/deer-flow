@@ -79,7 +79,7 @@ def generate_image(
 if __name__ == "__main__":
     import argparse
 
-    parser = argparse.ArgumentParser(description="Generate images using Gemini API")
+    parser = argparse.ArgumentParser(description="Generate images using the configured image generator (Gemini, Seedream, etc.)")
     parser.add_argument(
         "--prompt-file",
         required=True,

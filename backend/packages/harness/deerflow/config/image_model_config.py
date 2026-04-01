@@ -1,5 +1,6 @@
 import base64
 from abc import ABC, abstractmethod
+from typing import Literal
 
 import requests
 from pydantic import BaseModel, Field
@@ -9,10 +10,14 @@ class ImageModelConfig(BaseModel):
     """
     Config for image generation models.
     """
-    name: str = Field(default=None, description="Unique identifier for the image model")
-    model: str = Field(default=None, description="Name of the image model")
-    api_base: str = Field(default=None, description="Base URL for the image model API")
-    api_key: str = Field(default=None, description="API key for authenticating with the image model API")
+    provider: Literal["gemini", "seedream"] | None = Field(
+        default=None,
+        description="Explicit image provider (recommended). If unset, DeerFlow infers provider from `name` for backward compatibility.",
+    )
+    name: str | None = Field(default=None, description="Unique identifier for the image model")
+    model: str | None = Field(default=None, description="Name of the image model")
+    api_base: str | None = Field(default=None, description="Base URL for the image model API")
+    api_key: str | None = Field(default=None, description="API key for authenticating with the image model API")
 
 
 class BaseImageGenerator(ABC):
@@ -63,7 +68,11 @@ class GeminiImageGenerator(BaseImageGenerator):
         }
 
         resp = requests.post(url, headers=headers, params=params, json=payload, timeout=90)
-        resp.raise_for_status()
+        try:
+            resp.raise_for_status()
+        except Exception as e:
+            error_msg = f"Request failed: {e}\nURL: {url}\nStatus: {getattr(resp, 'status_code', 'unknown')}\nResponse: {getattr(resp, 'text', '')}"
+            raise RuntimeError(error_msg) from e
     
         data = resp.json()
     
@@ -94,6 +103,8 @@ class VolcengineSeedreamImageGenerator(BaseImageGenerator):
             raise ValueError("api_base required")
         if not self.cfg.api_key:
             raise ValueError("api_key required")
+        if not self.cfg.model:
+            raise ValueError("model required")
 
         url = f"{self.cfg.api_base.rstrip('/')}"
         headers = {"Authorization": f"Bearer {self.cfg.api_key}", "Content-Type": "application/json"}
@@ -110,6 +121,9 @@ class VolcengineSeedreamImageGenerator(BaseImageGenerator):
             "stream": False,
             "watermark": False
         }
+        seedream_reference_images = self._build_seedream_reference_images(reference_images)
+        if seedream_reference_images:
+            payload["reference_images"] = seedream_reference_images
 
         resp = requests.post(url, headers=headers, json=payload, timeout=120)
         try:
@@ -135,13 +149,40 @@ class VolcengineSeedreamImageGenerator(BaseImageGenerator):
         
         raise RuntimeError(f"No image data found in response: {data}")
 
+    @staticmethod
+    def _build_seedream_reference_images(reference_images: list[dict]) -> list[dict]:
+        result = []
+        for image in reference_images:
+            inline_data = image.get("inlineData", {})
+            data = inline_data.get("data")
+            if not data:
+                continue
+            result.append(
+                {
+                    "image_base64": data,
+                    "mime_type": inline_data.get("mimeType", "image/jpeg"),
+                }
+            )
+        return result
+
 def get_image_generate_fn(cfg: ImageModelConfig):
+    if cfg.provider == "gemini":
+        return GeminiImageGenerator(cfg)._generate
+    if cfg.provider == "seedream":
+        return VolcengineSeedreamImageGenerator(cfg)._generate
+
     raw_name = (cfg.name or "").strip()
     if not raw_name:
-        raise ValueError("Image model config 'name' is required for provider selection")
+        raise ValueError("Image model config requires either 'provider' or 'name' for provider selection")
     name = raw_name.lower()
-    if "gemini" in name:
+    has_gemini = "gemini" in name
+    has_seedream = "seedream" in name
+    if has_gemini and has_seedream:
+        raise ValueError(
+            f"Ambiguous image provider inferred from name {cfg.name!r}. Set image_generate_model.provider explicitly to one of: 'gemini', 'seedream'."
+        )
+    if has_gemini:
         return GeminiImageGenerator(cfg)._generate
-    if "seedream" in name:
+    if has_seedream:
         return VolcengineSeedreamImageGenerator(cfg)._generate
-    raise ValueError(f"Unsupported image provider in config name: {cfg.name!r}")
+    raise ValueError(f"Unsupported image provider inferred from config name: {cfg.name!r}. Set image_generate_model.provider explicitly to one of: 'gemini', 'seedream'.")
