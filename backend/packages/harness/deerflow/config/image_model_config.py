@@ -33,6 +33,18 @@ class BaseImageGenerator(ABC):
     ) -> bytes:
         raise NotImplementedError
 
+    @staticmethod
+    def _request_json(method: str, url: str, *, timeout: int, **request_kwargs) -> dict:
+        try:
+            resp = requests.request(method, url, timeout=timeout, **request_kwargs)
+            resp.raise_for_status()
+        except Exception as e:
+            status = getattr(resp, "status_code", "unknown") if "resp" in locals() else "unknown"
+            text = getattr(resp, "text", "") if "resp" in locals() else ""
+            error_msg = f"Request failed: {e}\nURL: {url}\nStatus: {status}\nResponse: {text}"
+            raise RuntimeError(error_msg) from e
+        return resp.json()
+
 
 class GeminiImageGenerator(BaseImageGenerator):
     def __init__(self, cfg: ImageModelConfig):
@@ -44,8 +56,7 @@ class GeminiImageGenerator(BaseImageGenerator):
         reference_images: list[dict],
         aspect_ratio: str = "16:9",
     ) -> bytes:
-        api_key = self.cfg.api_key
-        if not api_key:
+        if not self.cfg.api_key:
             raise ValueError("api_key required")
 
         model = self.cfg.model or "gemini-3-flash-image"
@@ -53,7 +64,7 @@ class GeminiImageGenerator(BaseImageGenerator):
         url = f"{base_url}/models/{model}:generateContent"
     
         headers = {"Content-Type": "application/json"}
-        params = {"key": api_key}
+        params = {"key": self.cfg.api_key}
 
         payload = {
             "contents": [{
@@ -67,14 +78,7 @@ class GeminiImageGenerator(BaseImageGenerator):
          }
         }
 
-        resp = requests.post(url, headers=headers, params=params, json=payload, timeout=90)
-        try:
-            resp.raise_for_status()
-        except Exception as e:
-            error_msg = f"Request failed: {e}\nURL: {url}\nStatus: {getattr(resp, 'status_code', 'unknown')}\nResponse: {getattr(resp, 'text', '')}"
-            raise RuntimeError(error_msg) from e
-    
-        data = resp.json()
+        data = self._request_json("post", url, timeout=90, headers=headers, params=params, json=payload)
     
         candidate = data.get("candidates", [{}])[0]
         content_parts = candidate.get("content", {}).get("parts", [])
@@ -125,13 +129,7 @@ class VolcengineSeedreamImageGenerator(BaseImageGenerator):
         if seedream_reference_images:
             payload["reference_images"] = seedream_reference_images
 
-        resp = requests.post(url, headers=headers, json=payload, timeout=120)
-        try:
-            resp.raise_for_status()
-        except Exception as e:
-            error_msg = f"Request failed: {e}\nURL: {url}\nStatus: {resp.status_code}\nResponse: {resp.text}"
-            raise RuntimeError(error_msg) from e
-        data = resp.json()
+        data = self._request_json("post", url, timeout=120, headers=headers, json=payload)
 
         images = data.get("data") or []
         if not images:
